@@ -20,7 +20,7 @@ Reply:
     for attempt in range(3):  # Retry up to 3 times
         try:
             response = client.chat.completions.create(
-                model="gpt-4o",  # If available to your key
+                model = "gpt-3.5-turbo",  # If available to your key
 
                 messages=[{"role": "user", "content": prompt}]
             )
