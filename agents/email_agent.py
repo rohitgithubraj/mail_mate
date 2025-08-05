@@ -16,10 +16,12 @@ GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 MODEL_NAME = "llama3-70b-8192"
 
 # Function to generate reply
-def generate_email_response(email_text, tone):
+def generate_email_response(email_text, tone, user_name):
     prompt = f"""
 You are an AI assistant. Write a reply to the following email using a {tone.lower()} tone.
-Only return the body of the email. Do NOT include any extra explanation or commentary.
+Only return the body of the reply email. Do NOT include any extra explanation or commentary.
+
+Sign the email with the sender's name: {user_name}.
 
 Email:
 {email_text}
@@ -45,6 +47,7 @@ Reply:
         return reply
     except requests.exceptions.RequestException as e:
         return f"⚠️ Error contacting Groq API: {e}"
+
 
 # Function to send email
 def send_email(receiver_email, subject, body):
