@@ -1,8 +1,8 @@
 import streamlit as st
 import openai
 
-# Set API key
-openai.api_key = st.secrets["OPENAI_API_KEY"]
+# Create client instance
+client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
 
 def generate_email_response(email_text, tone):
     prompt = f"""
@@ -13,8 +13,8 @@ Email:
 
 Reply:
 """
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model="gpt-4",
         messages=[{"role": "user", "content": prompt}]
     )
-    return response.choices[0]['message']['content']
+    return response.choices[0].message.content
