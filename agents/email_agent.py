@@ -20,7 +20,7 @@ MODEL_NAME = "llama3-70b-8192"  # Free & powerful
 # 🤖 Generate reply with Groq LLaMA‑3
 # -----------------------------
 
-def generate_email_response(email_text: str, tone: str) -> str:
+def generate_email_response(email_text: str, tone: str, sender_name: str = "") -> str:
     """Call Groq API to generate an email reply."""
     if not GROQ_API_KEY:
         return "⚠ Groq API key not configured."
@@ -30,13 +30,23 @@ def generate_email_response(email_text: str, tone: str) -> str:
         "Content-Type": "application/json",
     }
 
+    sender_instruction = f"\nSender name: {sender_name}" if sender_name else ""
+
     prompt = f"""
-You are an AI assistant. Write a reply to the following email using a {tone.lower()} tone.
+You are an AI assistant. Write ONLY the email reply content using a {tone.lower()} tone.
+
+IMPORTANT: 
+- Do NOT include any introductory phrases like "Here is a potential reply to the email:" or "Here's a reply:"
+- Start directly with the email salutation (Dear/Hi/Hello)
+- End with "Best regards," followed by the sender's name if provided, otherwise use [Your Name]
+- Write ONLY the email content, nothing else
+
+{sender_instruction}
 
 Email:
 {email_text}
 
-Reply:
+Email Reply (content only):
 """
 
     payload = {
@@ -48,7 +58,30 @@ Reply:
     try:
         res = requests.post(GROQ_API_URL, json=payload, headers=headers, timeout=60)
         res.raise_for_status()
-        return res.json()["choices"][0]["message"]["content"].strip()
+        response_text = res.json()["choices"][0]["message"]["content"].strip()
+        
+        # Clean up any unwanted introductory phrases
+        unwanted_phrases = [
+            "Here is a potential reply to the email:",
+            "Here's a potential reply to the email:",
+            "Here is a reply to the email:",
+            "Here's a reply to the email:",
+            "Here is the reply:",
+            "Here's the reply:",
+            "Reply:",
+            "Email Reply:",
+        ]
+        
+        for phrase in unwanted_phrases:
+            if response_text.startswith(phrase):
+                response_text = response_text[len(phrase):].strip()
+                break
+        
+        # Replace [Your Name] with actual sender name if provided
+        if sender_name and "[Your Name]" in response_text:
+            response_text = response_text.replace("[Your Name]", sender_name)
+        
+        return response_text
     except requests.exceptions.HTTPError as e:
         return f"⚠ Groq API error: {e.response.status_code} – {e.response.text}"
     except requests.exceptions.RequestException as e:
@@ -84,6 +117,9 @@ def send_email(recipient: str, subject: str, body: str) -> str:
 st.set_page_config(page_title="Email Reply Assistant", page_icon="✉")
 st.title("✉ Email Reply Assistant (LLaMA‑3 @ Groq)")
 
+# Add sender name input
+sender_name = st.text_input("Your Name (optional)", placeholder="Enter your name")
+
 col1, col2 = st.columns(2)
 with col1:
     recipient_email = st.text_input("Recipient Email", placeholder="example@domain.com")
@@ -98,7 +134,7 @@ if st.button("Generate Reply"):
         st.warning("Please paste the email content first.")
     else:
         with st.spinner("Generating reply..."):
-            reply_text = generate_email_response(email_text, tone)
+            reply_text = generate_email_response(email_text, tone, sender_name)
         st.subheader("Generated Reply")
         st.write(reply_text)
 
@@ -111,4 +147,3 @@ if st.button("Generate Reply"):
                     st.success(status)
                 else:
                     st.error(status)
-
