@@ -11,7 +11,8 @@ SMTP_SERVER = st.secrets.get("SMTP_SERVER", os.getenv("SMTP_SERVER", "smtp.gmail
 SMTP_PORT = int(st.secrets.get("SMTP_PORT", os.getenv("SMTP_PORT", 587)))
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-MODEL_NAME = "llama3-8b-8192"
+
+MODEL_NAME = "llama-3.1-8b-instant"
 
 def generate_email_response(email_text: str, tone: str, sender_name: str = "") -> str:
     if not GROQ_API_KEY:
@@ -84,7 +85,7 @@ def render_ui():
     st.title("📧 MailMate – Think Less. Reply Smart.")
 
     sender_name = st.text_input("Your Name")
-    
+
     col1, col2 = st.columns(2)
     with col1:
         recipient_email = st.text_input("Recipient Email")
