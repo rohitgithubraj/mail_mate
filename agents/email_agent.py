@@ -11,10 +11,30 @@ SMTP_SERVER = st.secrets.get("SMTP_SERVER", os.getenv("SMTP_SERVER", "smtp.gmail
 SMTP_PORT = int(st.secrets.get("SMTP_PORT", os.getenv("SMTP_PORT", 587)))
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
-
 MODEL_NAME = "llama-3.1-8b-instant"
 
-def generate_email_response(email_text: str, tone: str, sender_name: str = "") -> str:
+
+def clean_email_text(email_text):
+    lines = email_text.split("\n")
+    cleaned_lines = [line for line in lines if not line.lower().startswith("subject:")]
+    return "\n".join(cleaned_lines)
+
+
+def extract_subject(email_text):
+    for line in email_text.split("\n"):
+        if line.lower().startswith("subject:"):
+            return line.replace("Subject:", "").strip()
+    return ""
+
+
+def format_subject(subject):
+    subject = subject.strip()
+    if not subject.lower().startswith("re:"):
+        subject = "Re: " + subject
+    return subject
+
+
+def generate_email_response(email_text, tone, sender_name=""):
     if not GROQ_API_KEY:
         return "⚠ Groq API key not configured."
 
@@ -28,6 +48,11 @@ def generate_email_response(email_text: str, tone: str, sender_name: str = "") -
 
     prompt = f"""
 Write a {tone.lower()} email reply.
+
+IMPORTANT:
+- Do NOT include any subject line
+- Do NOT repeat "Subject:"
+- Only write the email body
 
 Start with greeting.
 End with Best regards.
@@ -58,12 +83,13 @@ Email:
     except Exception as e:
         return f"⚠ Error: {e}"
 
-def send_email(recipient: str, subject: str, body: str):
+
+def send_email(recipient, subject, body):
     if not (SENDER_EMAIL and EMAIL_PASSWORD):
         return "⚠ Email credentials not configured."
 
     msg = MIMEText(body, "plain", "utf-8")
-    msg["Subject"] = subject
+    msg["Subject"] = format_subject(subject)
     msg["From"] = SENDER_EMAIL
     msg["To"] = recipient
 
@@ -76,9 +102,11 @@ def send_email(recipient: str, subject: str, body: str):
     except smtplib.SMTPException as e:
         return f"⚠ Failed to send email: {e}"
 
+
 def init_session():
     if "reply" not in st.session_state:
         st.session_state.reply = ""
+
 
 def render_ui():
     st.set_page_config(page_title="MailMate AI", page_icon="📧")
@@ -86,13 +114,16 @@ def render_ui():
 
     sender_name = st.text_input("Your Name")
 
+    email_text = st.text_area("Paste email content", height=200)
+
+    extracted_subject = extract_subject(email_text)
+    default_subject = f"Re: {extracted_subject}" if extracted_subject else ""
+
     col1, col2 = st.columns(2)
     with col1:
         recipient_email = st.text_input("Recipient Email")
     with col2:
-        email_subject = st.text_input("Email Subject")
-
-    email_text = st.text_area("Paste email content", height=200)
+        email_subject = st.text_input("Email Subject", value=default_subject)
 
     tone = st.selectbox(
         "Tone",
@@ -104,7 +135,8 @@ def render_ui():
             st.warning("Please enter email content.")
         else:
             with st.spinner("Generating reply..."):
-                st.session_state.reply = generate_email_response(email_text, tone, sender_name)
+                cleaned_email = clean_email_text(email_text)
+                st.session_state.reply = generate_email_response(cleaned_email, tone, sender_name)
 
     edited_reply = st.text_area(
         "Edit your reply before sending",
@@ -124,9 +156,11 @@ def render_ui():
             else:
                 st.error(status)
 
+
 def main():
     init_session()
     render_ui()
+
 
 if __name__ == "__main__":
     main()
