@@ -3,6 +3,7 @@ import requests
 import smtplib
 from email.mime.text import MIMEText
 import os
+import time
 
 GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.getenv("GROQ_API_KEY"))
 SENDER_EMAIL = st.secrets.get("SENDER_EMAIL", os.getenv("SENDER_EMAIL"))
@@ -16,8 +17,7 @@ MODEL_NAME = "llama-3.1-8b-instant"
 
 def clean_email_text(email_text):
     lines = email_text.split("\n")
-    cleaned_lines = [line for line in lines if not line.lower().startswith("subject:")]
-    return "\n".join(cleaned_lines)
+    return "\n".join([line for line in lines if not line.lower().startswith("subject:")])
 
 
 def extract_subject(email_text):
@@ -47,12 +47,15 @@ def generate_email_response(email_text, tone, sender_name=""):
     }
 
     prompt = f"""
-Write a {tone.lower()} email reply.
+You are an AI email assistant.
+
+Write a clear, specific, and context-aware {tone.lower()} reply.
 
 IMPORTANT:
 - Do NOT include any subject line
 - Do NOT repeat "Subject:"
-- Only write the email body
+- Avoid generic replies
+- Make response specific to the email content
 
 Start with greeting.
 End with Best regards.
@@ -61,14 +64,15 @@ Sender: {sender_name if sender_name else "[Your Name]"}
 
 Email:
 {email_text}
+
+Unique ID: {time.time()}
 """
 
     payload = {
         "model": MODEL_NAME,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.9,
+        "top_p": 0.9,
         "max_tokens": 500
     }
 
@@ -135,6 +139,12 @@ def render_ui():
             st.warning("Please enter email content.")
         else:
             with st.spinner("Generating reply..."):
+                cleaned_email = clean_email_text(email_text)
+                st.session_state.reply = generate_email_response(cleaned_email, tone, sender_name)
+
+    if st.button("Regenerate Reply"):
+        if email_text.strip():
+            with st.spinner("Regenerating..."):
                 cleaned_email = clean_email_text(email_text)
                 st.session_state.reply = generate_email_response(cleaned_email, tone, sender_name)
 
