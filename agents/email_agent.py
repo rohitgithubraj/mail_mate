@@ -16,8 +16,9 @@ MODEL_NAME = "llama-3.1-8b-instant"
 
 
 def clean_email_text(email_text):
-    lines = email_text.split("\n")
-    return "\n".join([line for line in lines if not line.lower().startswith("subject:")])
+    return "\n".join(
+        [line for line in email_text.split("\n") if not line.lower().startswith("subject:")]
+    )
 
 
 def extract_subject(email_text):
@@ -47,15 +48,18 @@ def generate_email_response(email_text, tone, sender_name=""):
     }
 
     prompt = f"""
-You are an AI email assistant.
+You are an intelligent email assistant.
 
-Write a clear, specific, and context-aware {tone.lower()} reply.
+Write a {tone.lower()} reply to the email below.
 
-IMPORTANT:
+STRICT INSTRUCTIONS:
+- Do NOT use generic phrases like "Thank you for your email"
+- Do NOT repeat the same sentence structure every time
+- Acknowledge specific points mentioned in the email
+- Mention tasks/actions clearly
+- Keep it natural and human-like
+- Keep it concise but meaningful
 - Do NOT include any subject line
-- Do NOT repeat "Subject:"
-- Avoid generic replies
-- Make response specific to the email content
 
 Start with greeting.
 End with Best regards.
@@ -65,14 +69,18 @@ Sender: {sender_name if sender_name else "[Your Name]"}
 Email:
 {email_text}
 
-Unique ID: {time.time()}
+Make this reply slightly different in wording and structure each time.
+
+Unique variation ID: {time.time()}
 """
 
     payload = {
         "model": MODEL_NAME,
         "messages": [{"role": "user", "content": prompt}],
-        "temperature": 0.9,
-        "top_p": 0.9,
+        "temperature": 1.1,
+        "top_p": 0.95,
+        "presence_penalty": 0.6,
+        "frequency_penalty": 0.5,
         "max_tokens": 500
     }
 
@@ -144,7 +152,7 @@ def render_ui():
 
     if st.button("Regenerate Reply"):
         if email_text.strip():
-            with st.spinner("Regenerating..."):
+            with st.spinner("Regenerating reply..."):
                 cleaned_email = clean_email_text(email_text)
                 st.session_state.reply = generate_email_response(cleaned_email, tone, sender_name)
 
