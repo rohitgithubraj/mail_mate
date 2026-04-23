@@ -58,7 +58,7 @@ STRICT INSTRUCTIONS:
 - Acknowledge specific points mentioned in the email
 - Mention tasks/actions clearly
 - Keep it natural and human-like
-- Keep it concise but meaningful
+- Keep it short but meaningful
 - Do NOT include any subject line
 
 Start with greeting.
